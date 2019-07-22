@@ -1,136 +1,156 @@
 import logging
-import re
 
 import pandas as pd
 import requests
-import usaddress
 from bs4 import BeautifulSoup
 
-from settings import engine, BART_API_TOKEN
+from settings import BART_API_TOKEN, engine
 
 
 class StationInformationParser:
 
-    STATION_URL_BASE = 'https://www.bart.gov/stations'
-    BART_STATION_API = f'http://api.bart.gov/api/stn.aspx?cmd=stns&key={BART_API_TOKEN}&json=y'
+    STATION_URL_BASE = "https://www.bart.gov/stations"
+    BART_STATION_API_BASE = f"http://api.bart.gov/api/stn.aspx?cmd=stninfo&key={BART_API_TOKEN}&json=y&orig="
 
     def __init__(self, station):
 
-        station_response = requests.get(f'{self.STATION_URL_BASE}/{station.lower()}')
-        station_content = station_response.content
-        self.soup = BeautifulSoup(station_content, 'lxml')
-        self.all_links = self.soup.find_all('a')
-        self.address_parts = None
-        self.bikes = None
+        station_url_response = requests.get(
+            f"{self.STATION_URL_BASE}/{station.lower()}"
+        )
+        station_url_content = station_url_response.content
+        self.soup = BeautifulSoup(station_url_content, "lxml")
+        self.all_links = self.soup.find_all("a")
 
-        api_response = requests.get(self.BART_STATION_API)
-        self.api_content = api_response.json()
+        station_api_response = requests.get(
+            f"{self.BART_STATION_API_BASE}{station.lower()}"
+        )
+        self.station_api_content = station_api_response.json()["root"]["stations"][
+            "station"
+        ]
 
-    def get_station_base_info():
-        for station in self.api_content['stations']['stations']:
-            name = station['name']
-            abbr = station['abbr']
-            gtfs_latitude = station['gtfs_latitude']
+    def get_latitude(self):
+        return self.station_api_content["gtfs_latitude"]
+
+    def get_longitude(self):
+        return self.station_api_content["gtfs_longitude"]
+
+    def get_address(self):
+        return self.station_api_content["address"]
+
+    def get_city(self):
+        return self.station_api_content["city"]
+
+    def get_county(self):
+        return self.station_api_content["county"]
+
+    def get_state(self):
+        return self.station_api_content["state"]
+
+    def get_zipcode(self):
+        return self.station_api_content["zipcode"]
+
+    def get_full_address(self):
+        full_address = (
+            self.get_address()
+            + ", "
+            + self.get_city()
+            + ", "
+            + self.get_state()
+            + " "
+            + self.get_zipcode()
+        )
+        return full_address
+
+    def get_attraction(self):
+        return self.station_api_content["attraction"].get("#cdata-section", "")
+
+    def get_cross_street(self):
+        return self.station_api_content["cross_street"].get("#cdata-section", "")
+
+    def get_food(self):
+        return self.station_api_content["food"].get("#cdata-section", "")
+
+    def get_intro(self):
+        return self.station_api_content["intro"].get("#cdata-section", "")
+
+    def get_link(self):
+        return self.station_api_content["link"].get("#cdata-section", "")
+
+    def get_north_platforms(self):
+        north_platforms = self.station_api_content["north_platforms"]
+        if isinstance(north_platforms, dict):
+            return north_platforms.get("platform", "")
+        else:
+            return north_platforms
+
+    def get_north_routes(self):
+        north_routes = self.station_api_content["north_routes"]
+        if isinstance(north_routes, dict):
+            return north_routes.get("route", "")
+        else:
+            return north_routes
+
+    def get_platform_info(self):
+        return self.station_api_content["platform_info"]
+
+    def get_shopping(self):
+        return self.station_api_content["shopping"].get("#cdata-section")
+
+    def get_south_platforms(self):
+        south_platforms = self.station_api_content["south_platforms"]
+        if isinstance(south_platforms, dict):
+            return south_platforms.get("platform", "")
+        else:
+            return south_platforms
+
+    def get_south_routes(self):
+        south_routes = self.station_api_content["south_routes"]
+        if isinstance(south_routes, dict):
+            return south_routes.get("route", "")
+        else:
+            return south_routes
 
     def get_station_map_url(self):
         for link in self.all_links:
-            if 'Station Map (PDF)' in link.get_text():
-                station_map_url = link.get('href')
+            if "Station Map (PDF)" in link.get_text():
+                station_map_url = link.get("href")
                 break
         return station_map_url
 
-    # def _populate_address_parts(self):
-    #     for link in self.all_links:
-    #         if re.search(' CA \d{5}', link.get_text()):
-    #             preprocessed_address = link.get_text()
-    #             break
-    #     parsable_address = self._clean_address(preprocessed_address)
-    #     address_parts = usaddress.tag(parsable_address)[0]
-    #     address_number = address_parts.get('AddressNumber', '')
-    #     street_name_pre = address_parts.get('StreetNamePreType', '')
-    #     street_name = address_parts.get('StreetName', '') or address_parts.get('BuildingName', '')
-    #     full_street_name = f'{street_name_pre} {street_name}'.strip()
-    #     post_type = address_parts.get('StreetNamePostType', '')
-    #     street_address = (
-    #         f"{address_number} {full_street_name} {post_type}".strip()
-    #     )
-    #     city = address_parts['PlaceName']
-    #     state = address_parts['StateName']
-    #     zip_code = address_parts['ZipCode']
-    #     self.address_parts = {
-    #         'street_address': street_address,
-    #         'city': city,
-    #         'state': state,
-    #         'zip_code': zip_code
-    #     }
 
-    # def _clean_address(self, preprocessed_address):
-    #     # SFO is an edge case
-    #     if 'International Terminal' in preprocessed_address:
-    #         return 'San Francisco CA 94128'
-    #     else:
-    #         address, misc = preprocessed_address.split(',')
-    #     state_zip = ' '.join(misc.split(' ')[1:])
-    #     cleaned_address = address + ', ' + state_zip
-    #     return cleaned_address
-
-    # def get_street_address(self):
-    #     if self.address_parts is None:
-    #         self._populate_address_parts()
-    #     return self.address_parts['street_address']
-
-    # def get_city(self):
-    #     if self.address_parts is None:
-    #         self._populate_address_parts()
-    #     return self.address_parts['city']
-
-    # def get_station_state(self):
-    #     if self.address_parts is None:
-    #         self._populate_address_parts()
-    #     return self.address_parts['state']
-
-    # def get_station_zip_code(self):
-    #     if self.address_parts is None:
-    #         self._populate_address_parts()
-    #     return self.address_parts['zip_code']
-
-    # def get_full_address(self):
-    #     if self.address_parts is None:
-    #         self._populate_address_parts()
-    #     if self.address_parts['street_address']:
-    #         self.address_parts['street_address'] += ', '
-    #     return (
-    #         self.address_parts['street_address']
-    #         + self.address_parts['city']
-    #         + ', '
-    #         + self.address_parts['state']
-    #         + ' '
-    #         + self.address_parts['zip_code']
-    #     )
-
-    # def get_has_bike_racks(self):
-    #     pass
-
-
-def craete_dim_station():
+def create_dim_station():
     # Basic station information (name and abbreviations)
-    station_abbreviation_url = 'https://api.bart.gov/docs/overview/abbrev.aspx'
+    station_abbreviation_url = "https://api.bart.gov/docs/overview/abbrev.aspx"
     station_abbreviation_df = pd.read_html(station_abbreviation_url)[0]
     station_abbreviation_df.index += 1
-    station_abbreviation_df.columns = ['abbreviation_lower', 'name']
-    station_abbreviation_df['abbreviation'] = station_abbreviation_df['abbreviation_lower'].str.upper()
-    station_abbreviation_df = station_abbreviation_df[['abbreviation', 'abbreviation_lower', 'name']]
-    station_abbreviation_df['station_url'] = 'https://www.bart.gov/stations/' + station_abbreviation_df['abbreviation_lower']
-    station_abbreviation_df['station_parser'] = station_abbreviation_df['abbreviation_lower'].apply(StationInformationParser)
-    station_abbreviation_df['street_address'] = station_abbreviation_df['station_parser'].apply(lambda x: x.get_street_address())
-    station_abbreviation_df['city'] = station_abbreviation_df['station_parser'].apply(lambda x: x.get_city())
-    station_abbreviation_df['state'] = station_abbreviation_df['station_parser'].apply(lambda x: x.get_station_state())
-    station_abbreviation_df['zip_code'] = station_abbreviation_df['station_parser'].apply(lambda x: x.get_station_zip_code())
-    station_abbreviation_df['full_address'] = station_abbreviation_df['station_parser'].apply(lambda x: x.get_full_address())
-    station_abbreviation_df['station_map_url'] = station_abbreviation_df['station_parser'].apply(lambda x: x.get_station_map_url())
-    station_abbreviation_df.drop(columns=['station_parser'], inplace=True)
-    station_abbreviation_df.to_sql(name='dim_station', schema='bart', if_exists='replace', con=engine, index_label='id')
-    logging.info('Created bart.dim_station')
+    station_abbreviation_df.columns = ["abbreviation_lower", "name"]
+    station_abbreviation_df["abbreviation"] = station_abbreviation_df[
+        "abbreviation_lower"
+    ].str.upper()
+    station_abbreviation_df = station_abbreviation_df[
+        ["abbreviation", "abbreviation_lower", "name"]
+    ]
+    station_abbreviation_df["station_parser"] = station_abbreviation_df[
+        "abbreviation_lower"
+    ].apply(StationInformationParser)
+    get_methods = [
+        method for method in dir(StationInformationParser) if "get_" in method
+    ]
+    for get_method in get_methods:
+        column_name = "_".join(get_method.split("_")[1:])
+        station_abbreviation_df[column_name] = station_abbreviation_df[
+            "station_parser"
+        ].apply(lambda x: getattr(x, get_method)())
+
+    station_abbreviation_df.drop(columns=["station_parser"], inplace=True)
+    station_abbreviation_df.to_sql(
+        name="dim_station",
+        schema="bart",
+        if_exists="replace",
+        con=engine,
+        index_label="id",
+    )
+    logging.info("Created bart.dim_station")
 
 
 def create_bart_schema():
@@ -221,14 +241,14 @@ def create_dim_date():
             FROM GENERATE_SERIES (0,29219) AS SEQUENCE (DAY)
             GROUP BY SEQUENCE.DAY) DQ
         ORDER BY 1;
-        """
+        """,
     ]
     for sql_stmt in sql_stmts:
         logging.info(sql_stmt)
         engine.execute(sql_stmt)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     create_bart_schema()
     create_dim_date()
-    craete_dim_station()
+    create_dim_station()

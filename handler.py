@@ -5,14 +5,10 @@ import os
 def hello(event, context):
     body = {
         "message": "Go Serverless v1.0! Your function executed successfully!",
-        "input": event
+        "input": event,
     }
 
-    response = {
-        "statusCode": 200,
-        "body": json.dumps(body),
-        "env": os.environ
-    }
+    response = {"statusCode": 200, "body": json.dumps(body), "env": os.environ}
 
     return response
 

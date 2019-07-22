@@ -1,20 +1,16 @@
 import argparse
 import gzip
-import os
-import time
 from io import BytesIO
 
 import boto3
-import psycopg2
 import requests
-from botocore.exceptions import ClientError
 
 from settings import engine, log
 
 
 class BartRidershipLoader:
 
-    BASE_URL = 'http://64.111.127.166/origin-destination'
+    BASE_URL = "http://64.111.127.166/origin-destination"
 
     def __init__(self, start_year, end_year):
         self.start_year = start_year
@@ -64,16 +60,12 @@ class BartRidershipLoader:
         truncate_partition = f"""
         TRUNCATE bart.fact_ridership_{year}
         """
-        return [
-            create_table_sql,
-            create_year_partition,
-            truncate_partition,
-        ]
+        return [create_table_sql, create_year_partition, truncate_partition]
 
     def load_to_source_schema(self, year):
         file = f"date-hour-soo-dest-{year}.csv.gz"
         conn = engine.raw_connection()
-        response = requests.get(f'{self.BASE_URL}/{file}')
+        response = requests.get(f"{self.BASE_URL}/{file}")
         content = response.content
         with conn.cursor() as cur:
             for sql in self.get_source_schema_setup_sql(year):
@@ -112,33 +104,33 @@ class BartRidershipLoader:
 
     def run(self):
         for year in range(self.start_year, self.end_year + 1):
-            log.info(f'Loading {year} bart data into the data warehouse...')
+            log.info(f"Loading {year} bart data into the data warehouse...")
             self.load_to_source_schema(year)
             self.transform_to_bart_schema(year)
 
     def drop_all():
         drop_sql_stmts = [
             "DROP TABLE source.ridership",
-            "DROP TABLE bart.fact_ridership"
+            "DROP TABLE bart.fact_ridership",
         ]
         for sql_stmt in drop_sql_stmts:
             log.info(sql_stmt)
             engine.execute()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-s',
-        '--start_year',
-        help='Year to start loading bart data into data warehouse, inclusive',
-        required=True
+        "-s",
+        "--start_year",
+        help="Year to start loading bart data into data warehouse, inclusive",
+        required=True,
     )
     parser.add_argument(
-        '-e',
-        '--end_year',
-        help='Year to stop loading bart data into data warehouse, inclusive',
-        required=True
+        "-e",
+        "--end_year",
+        help="Year to stop loading bart data into data warehouse, inclusive",
+        required=True,
     )
     args = parser.parse_args()
     start_year = int(args.start_year)
