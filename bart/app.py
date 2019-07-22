@@ -539,7 +539,7 @@ def store_hover_ts(click_data):
 )
 def update_hourly_histogram_by_date(date, click_data, n_clicks_timestamp, hover_ts):
     if n_clicks_timestamp and n_clicks_timestamp > hover_ts:
-        hovered_station_str = f"Currently hovered station: none"
+        clicked_station_str = f"Currently clicked station: none"
         station_full_address_str = None
         station_links_str = None
         figure = get_histogram_figure(date, None)
@@ -558,9 +558,9 @@ def update_hourly_histogram_by_date(date, click_data, n_clicks_timestamp, hover_
             station_display = "none"
             station_full_address_str = None
             station_links_str = None
-        hovered_station_str = f"Currently hovered station: {station_display}"
+        clicked_station_str = f"Currently clicked station: {station_display}"
         figure = get_histogram_figure(date, click_data)
-    return figure, hovered_station_str, station_full_address_str, station_links_str
+    return figure, clicked_station_str, station_full_address_str, station_links_str
 
 
 @app.callback(
