@@ -1,12 +1,32 @@
 version: '3'
 
 services:
-  postgres:
+  db:
     image: postgres:11
     restart: always
     environment:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=bart
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
+  app:
+    image: bart-ridership:latest
+    depends_on:
+      - db
+    # env_file:
+    #   - .env
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PWD=postgres
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=postgres
+      - BART_API_TOKEN=Q2MP-565X-9V2T-DWE9
+      - MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoiYW5keWh1eW5oIiwiYSI6ImNqeGZoOGw4MjAwZDgzb3A4NmptYml6YXMifQ.EpFfyMkhfaRcnA7okCjiVw
+    ports:
+      - "8050:8050"
+    command: bart/app.py
+
 

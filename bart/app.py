@@ -657,4 +657,7 @@ def download_csv():
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    # result = engine.execute("SELECT * FROM pg_catalog.pg_tables;")
+    # for row in result:
+    #     print(row)
+    app.run_server(debug=True, host='0.0.0.0')
