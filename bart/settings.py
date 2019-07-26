@@ -4,7 +4,7 @@ import os
 import sqlalchemy
 
 DB_USER = os.environ["POSTGRES_USER"]
-DB_PWD = os.environ["POSTGRES_PWD"]
+DB_PWD = os.environ["POSTGRES_PASSWORD"]
 DB_HOST = os.environ["POSTGRES_HOST"]
 DB_PORT = os.environ["POSTGRES_PORT"]
 DB_SCHEMA = os.environ["POSTGRES_DB"]
