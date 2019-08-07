@@ -1,21 +1,19 @@
-version: '3'
+version: '3.1'
 
 services:
-  db:
-    image: postgres:11
+
+  nginx:
+    container_name: nginx
     restart: always
-    env_file:
-      - .env
+    build: ./nginx
     ports:
-      - "5432:5432"
-  app:
-    image: bart-ridership:latest
+      - "80:80"
     depends_on:
-      - db
+      - web
+
+  web:
+    container_name: web
+    restart: always
+    build: ./app
     env_file:
       - .env
-    ports:
-      - "8050:8050"
-    command: bart/app.py
-
-

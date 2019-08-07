@@ -1,0 +1,26 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+flake8 = "*"
+isort = "*"
+black = "*"
+
+[packages]
+requests = "*"
+sqlalchemy = "*"
+psycopg2 = "*"
+boto3 = "*"
+pandas = "*"
+lxml = "*"
+bs4 = "*"
+dash-daq = "==0.1.0"
+dash = "==1.0.0"
+dash-bootstrap-components = "*"
+gunicorn = "*"
+
+
+[pipenv]
+allow_prereleases = true

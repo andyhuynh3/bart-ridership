@@ -51,8 +51,6 @@ navbar = dbc.NavbarSimple(
     brand="Bart Ridership Dashboard", brand_href="#", sticky="top"
 )
 
-# TODO: loading screen thingy
-
 body = dbc.Row(
     [
         dbc.Col(
@@ -657,7 +655,4 @@ def download_csv():
 
 
 if __name__ == "__main__":
-    # result = engine.execute("SELECT * FROM pg_catalog.pg_tables;")
-    # for row in result:
-    #     print(row)
-    app.run_server(debug=True, host='0.0.0.0')
+    app.run_server(debug=True)
