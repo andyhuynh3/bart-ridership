@@ -17,6 +17,8 @@ RUN pipenv install --skip-lock --system --deploy
 
 COPY ./entrypoint.sh /usr/src/app/entrypoint.sh
 
+RUN chmod +x /usr/src/app/entrypoint.sh
+
 COPY . /usr/src/app/
 
 WORKDIR /usr/src/app
