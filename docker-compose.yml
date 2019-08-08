@@ -15,3 +15,5 @@ services:
     container_name: web
     restart: always
     build: ./app
+    volumes:
+      - ~/.aws:/root/.aws:ro

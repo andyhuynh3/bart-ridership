@@ -4,7 +4,7 @@ import os
 import sqlalchemy
 import boto3
 
-ssm = boto3.client('ssm', 'us-west-2')
+ssm = boto3.client('ssm')
 
 
 def _get_config(key):
