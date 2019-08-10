@@ -136,20 +136,18 @@ class BartRidershipData:
         return self.sql_to_df(sql)
 
     def get_ridership_by_hour_by_station_and_date(
-        self, date, station_abb, source="origin"
+        self, date, station_abb
     ):
         date_id = date.replace("-", "")
         sql = f"""
     SELECT
         hour,
-        COUNT(1) AS ridership_total
-    FROM bart.fact_ridership fr
-    JOIN bart.dim_station ds ON 1=1
-        AND fr.{source}_station_id = ds.id
+        origin_ridership_total,
+        destination_ridership_total
+    FROM bart.fact_ridership_by_hour_by_station_by_date
     WHERE 1=1
-        AND fr.date_id = '{date_id}'
-        AND ds.abbreviation = '{station_abb}'
-    GROUP BY hour;
+        AND date_id = '{date_id}'
+        AND abbreviation = '{station_abb}'
         """
         return self.sql_to_df(sql)
 
@@ -158,49 +156,24 @@ class BartRidershipData:
         sql = f"""
     SELECT
         hour,
-        COUNT(1) AS ridership_total
-    FROM bart.fact_ridership fr
-    WHERE fr.date_id = '{date_id}'
-    GROUP BY hour;
+        ridership_total
+    FROM bart.fact_ridership_count_by_hour_by_date
+    WHERE date_id = '{date_id}'
+    ORDER BY hour;
         """
         return self.sql_to_df(sql)
 
     def get_ridership_by_station_by_date(self, date):
         date_id = date.replace("-", "")
         sql = f"""
-    SELECT
-        abbreviation,
-        latitude,
-        longitude,
-        origin_count,
-        destination_count
-    FROM
-    (
         SELECT
-            ds.abbreviation,
-            ds.latitude,
-            ds.longitude,
-            COUNT(1) AS origin_count
-        FROM bart.fact_ridership fr
-        JOIN bart.dim_station ds ON 1=1
-            AND fr.origin_station_id = ds.id
-        WHERE fr.date_id = '{date_id}'
-        GROUP BY abbreviation, latitude, longitude
-    ) origin
-    JOIN
-    (
-        SELECT
-            ds.abbreviation,
-            ds.latitude,
-            ds.longitude,
-            COUNT(1) AS destination_count
-        FROM bart.fact_ridership fr
-        JOIN bart.dim_station ds ON 1=1
-            AND fr.destination_station_id = ds.id
-        WHERE fr.date_id = '{date_id}'
-        GROUP BY abbreviation, latitude, longitude
-    ) destination
-    USING (abbreviation, latitude, longitude)
+            abbreviation,
+            latitude,
+            longitude,
+            origin_count,
+            destination_count
+        FROM bart.fact_ridership_by_station_by_date
+        WHERE date_id = {date_id}
         """
         return self.sql_to_df(sql)
 
@@ -208,8 +181,8 @@ class BartRidershipData:
         date_id = date.replace("-", "")
         sql = f"""
         SELECT
-            COUNT(1) AS cnt
-        FROM bart.fact_ridership
+            cnt
+        FROM bart.fact_ridership_count_by_day
         WHERE date_id = '{date_id}'
         """
         return self.sql_to_df(sql)

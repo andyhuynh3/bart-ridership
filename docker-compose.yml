@@ -15,5 +15,9 @@ services:
     container_name: web
     restart: always
     build: ./app
+    env_file:
+      - .env
+    environment:
+      - AWS_DEFAULT_REGION=us-west-2
     volumes:
       - ~/.aws:/root/.aws:ro

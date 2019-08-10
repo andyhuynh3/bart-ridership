@@ -1,5 +1,5 @@
 run:
-	python bart/app.py
+	python app/app.py
 
 lint:
 	flake8 --exclude=.tox

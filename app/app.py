@@ -439,43 +439,40 @@ def get_histogram_figure(date, click_data=None):
 
     if click_data is not None:
         station_abb = click_data["points"][0]["text"].split(" - ")[0]
-        df_origin = bart_ridership_data.get_ridership_by_hour_by_station_and_date(
-            date, station_abb, source="origin"
+        df = bart_ridership_data.get_ridership_by_hour_by_station_and_date(
+            date, station_abb
         )
-        df_destination = bart_ridership_data.get_ridership_by_hour_by_station_and_date(
-            date, station_abb, source="destination"
-        )
-        max_y_origin = df_origin["ridership_total"].max()
-        max_y_destination = df_destination["ridership_total"].max()
+        max_y_origin = df["origin_ridership_total"].max()
+        max_y_destination = df["destination_ridership_total"].max()
         max_y = max_y_origin if max_y_origin > max_y_destination else max_y_destination
         data = [
             go.Bar(
-                x=df_origin["hour"],
-                y=df_origin["ridership_total"],
+                x=df["hour"],
+                y=df["origin_ridership_total"],
                 hoverinfo="y",
                 name="Origin",
             ),
             go.Bar(
-                x=df_destination["hour"],
-                y=df_destination["ridership_total"],
+                x=df["hour"],
+                y=df["destination_ridership_total"],
                 hoverinfo="y",
                 opacity=0.5,
                 name="Destination",
             ),
         ]
-        layout["annotations"] = [
-            dict(
-                x=xi + 0.25 if i else xi - 0.25,
-                y=yi,
-                text=str(yi),
-                xanchor="center",
-                yanchor="bottom",
-                showarrow=False,
-                font=dict(color="white"),
-            )
-            for i, df in enumerate([df_origin, df_destination])
-            for xi, yi in zip(df["hour"], df["ridership_total"])
-        ]
+        # layout["annotations"] = [
+        #     dict(
+        #         x=xi + 0.25 if i else xi - 0.25,
+        #         y=yi,
+        #         text=str(yi),
+        #         xanchor="center",
+        #         yanchor="bottom",
+        #         showarrow=False,
+        #         font=dict(color="white"),
+        #     )
+        #     for i, df in enumerate([])
+        #     for xi, yi in zip(df["hour"], df["ridership_total"])
+        # ]
         layout["showlegend"] = True
         layout["legend"] = go.layout.Legend(x=0, y=1)
         layout["title"] = go.layout.Title(text=f"Station: {station_abb}", x=0.5, y=0.95)
