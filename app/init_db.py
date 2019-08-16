@@ -150,6 +150,11 @@ def create_dim_station():
         con=engine,
         index_label="id",
     )
+    create_index_stmt = (
+        "CREATE INDEX idx_abbreviation_ds ON bart.dim_station (abbreviation);"
+    )
+    logging.info(create_index_stmt)
+    engine.execute(create_index_stmt)
     logging.info("Created bart.dim_station")
 
 

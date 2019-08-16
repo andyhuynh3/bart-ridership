@@ -548,7 +548,9 @@ def update_hourly_histogram_by_date(date, click_data, n_clicks_timestamp, hover_
             station_name = station_info["name"][0]
             station_display = f"{station_abb} ({station_name})"
             station_full_address_str = f"Station address: {station_full_address}"
-            station_links_str = f"More information: [Station link]({station_link}) and [Map]({station_map_url})"
+            station_links_str = (
+                f"More information: [Station link]({station_link}) and [Map]({station_map_url})"
+            )
         else:
             station_display = "none"
             station_full_address_str = None

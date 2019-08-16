@@ -9,26 +9,6 @@ class BartRidershipData:
     def sql_to_df(self, sql):
         return pd.read_sql(sql, con=self.connection)
 
-    def get_ridership_by_date(self, date):
-        date_id = date.replace("-", "")
-        sql = f"""
-        SELECT
-            date,
-            hour,
-            origin.name AS origin_station,
-            dest.name AS destination_station,
-            trip_counter
-        FROM bart.fact_ridership fr
-        JOIN bart.dim_date dd ON 1=1
-            AND fr.date_id = dd.date_id
-        JOIN bart.dim_station origin ON 1=1
-            AND fr.origin_station_id = origin.id
-        JOIN bart.dim_station dest  ON 1=1
-            AND fr.destination_station_id = dest.id
-        WHERE fr.date_id = '{date_id}'
-        """
-        return self.sql_to_df(sql)
-
     def get_ridership_data_by_date(self, date="2011-01-01"):
         date_id = date.replace("-", "")
         sql = f"""
@@ -85,43 +65,15 @@ class BartRidershipData:
             dest.link AS destination_link,
             origin.station_map_url AS origin_station_map_url,
             dest.station_map_url AS destination_map_url
-        FROM bart.fact_ridership fr
+        FROM bart.fact_ridership_{date_id[0:4]} fr
         JOIN bart.dim_date dd ON 1=1
             AND fr.date_id = dd.date_id
         JOIN bart.dim_station origin ON 1=1
             AND fr.origin_station_id = origin.id
         JOIN bart.dim_station dest  ON 1=1
             AND fr.destination_station_id = dest.id
-        WHERE fr.date_id = {date_id}
+        WHERE fr.date_id = '{date_id}'
         ORDER BY hour, origin_station, destination_station
-        """
-        return self.sql_to_df(sql)
-
-    def get_date_count_data_by_year(self, year):
-        sql = f"""
-    SELECT
-        date,
-        SUM(trip_counter) AS trip_counter
-    FROM bart.fact_ridership fr
-    JOIN bart.dim_date dd ON 1=1
-        AND fr.date_id = dd.date_id
-    JOIN bart.dim_station origin ON 1=1
-        AND fr.origin_station_id = origin.id
-    JOIN bart.dim_station dest  ON 1=1
-        AND fr.destination_station_id = dest.id
-    WHERE fr.date_id BETWEEN '{year}0101' AND '{year}1231'
-    GROUP BY date
-    ORDER BY date;
-        """
-        return self.sql_to_df(sql)
-
-    def get_ridership_by_year(self):
-        sql = f"""
-    SELECT
-        SUBSTRING(date_id::text, 1, 4) AS year,
-        SUM(trip_counter) AS trip_counter
-    FROM bart.fact_ridership fr
-    GROUP BY 1;
         """
         return self.sql_to_df(sql)
 
@@ -135,9 +87,7 @@ class BartRidershipData:
         """
         return self.sql_to_df(sql)
 
-    def get_ridership_by_hour_by_station_and_date(
-        self, date, station_abb
-    ):
+    def get_ridership_by_hour_by_station_and_date(self, date, station_abb):
         date_id = date.replace("-", "")
         sql = f"""
     SELECT
@@ -182,7 +132,7 @@ class BartRidershipData:
         sql = f"""
         SELECT
             cnt
-        FROM bart.fact_ridership_count_by_day
+        FROM bart.fact_ridership_count_by_date
         WHERE date_id = '{date_id}'
         """
         return self.sql_to_df(sql)

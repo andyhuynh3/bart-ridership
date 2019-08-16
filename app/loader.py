@@ -19,6 +19,7 @@ class BartRidershipLoader:
 
     def get_source_schema_setup_sql(self, year):
         # Extract source data
+        # TODO: Get rid of partition and use index
         create_schema_sql = "CREATE SCHEMA IF NOT EXISTS source"
         create_table_sql = """
         CREATE TABLE IF NOT EXISTS source.ridership (
@@ -57,10 +58,20 @@ class BartRidershipLoader:
         CREATE TABLE IF NOT EXISTS bart.fact_ridership_{year} PARTITION OF bart.fact_ridership
         FOR VALUES FROM ('{year}0101') TO ('{int(year) + 1}0101');
         """
+        create_index_sql = f"""
+        CREATE INDEX IF NOT EXISTS
+        idx_date_id_origin_station_id_destionation_station_id_fr_{year}
+        ON bart.fact_ridership_{year} (date_id, origin_station_id, destination_station_id);
+        """
         truncate_partition = f"""
         TRUNCATE bart.fact_ridership_{year}
         """
-        return [create_table_sql, create_year_partition, truncate_partition]
+        return [
+            create_table_sql,
+            create_year_partition,
+            create_index_sql,
+            truncate_partition,
+        ]
 
     def load_to_source_schema(self, year):
         file = f"date-hour-soo-dest-{year}.csv.gz"
@@ -102,11 +113,126 @@ class BartRidershipLoader:
         log.info(transform_sql)
         engine.execute(transform_sql)
 
+    def create_materialized_views(self):
+        sql_stmts = [
+            """
+            CREATE MATERIALIZED VIEW IF NOT EXISTS bart.fact_ridership_by_station_by_date
+            AS
+            SELECT
+                    date_id,
+                    abbreviation,
+                    latitude,
+                    longitude,
+                    origin_count,
+                    destination_count
+                FROM
+                (
+                    SELECT
+                        fr.date_id,
+                        ds.abbreviation,
+                        ds.latitude,
+                        ds.longitude,
+                        COUNT(1) AS origin_count
+                    FROM bart.fact_ridership fr
+                    JOIN bart.dim_station ds ON 1=1
+                        AND fr.origin_station_id = ds.id
+                    GROUP BY date_id, abbreviation, latitude, longitude
+                ) origin
+                JOIN
+                (
+                    SELECT
+                        fr.date_id,
+                        ds.abbreviation,
+                        ds.latitude,
+                        ds.longitude,
+                        COUNT(1) AS destination_count
+                    FROM bart.fact_ridership fr
+                    JOIN bart.dim_station ds ON 1=1
+                        AND fr.destination_station_id = ds.id
+                    GROUP BY date_id, abbreviation, latitude, longitude
+                ) destination
+            USING (date_id, abbreviation, latitude, longitude)
+            WITH NO DATA;
+            """,
+            """
+            CREATE MATERIALIZED VIEW IF NOT EXISTS bart.fact_ridership_count_by_date
+            AS
+            SELECT
+                date_id,
+                COUNT(1) AS cnt
+            FROM bart.fact_ridership
+            GROUP BY date_id
+            WITH NO DATA;
+            """,
+            """
+            CREATE MATERIALIZED VIEW IF NOT EXISTS bart.fact_ridership_count_by_hour_by_date
+            AS
+            SELECT
+                date_id,
+                hour,
+                COUNT(1) AS ridership_total
+            FROM bart.fact_ridership fr
+            GROUP BY date_id, hour
+            WITH NO DATA;
+            """,
+            """
+            CREATE MATERIALIZED VIEW IF NOT EXISTS bart.fact_ridership_by_hour_by_station_by_date
+            AS
+            SELECT
+                date_id,
+            abbreviation,
+            hour,
+            origin_ridership_total,
+            destination_ridership_total
+            FROM
+            (
+                SELECT
+                    date_id,
+                    abbreviation,
+                    hour,
+                    COUNT(1) AS origin_ridership_total
+                FROM bart.fact_ridership fr
+                JOIN bart.dim_station ds ON 1=1
+                    AND fr.origin_station_id = ds.id
+                GROUP BY date_id, abbreviation, hour
+            ) origin
+            JOIN
+            (
+                SELECT
+                date_id,
+                abbreviation,
+                hour,
+                COUNT(1) AS destination_ridership_total
+                FROM bart.fact_ridership fr
+                        JOIN bart.dim_station ds ON 1 = 1
+                    AND fr.destination_station_id = ds.id
+                GROUP BY date_id, abbreviation, hour
+            ) dest
+            USING (date_id, abbreviation, hour)
+            WITH NO DATA;
+            """,
+            """CREATE INDEX IF NOT EXISTS idx_date_id_abbreviation_frbhbsbd
+            ON bart.fact_ridership_by_hour_by_station_by_date (date_id, abbreviation);""",
+            """CREATE INDEX IF NOT EXISTS idx_date_id_frcbhbd
+            ON bart.fact_ridership_count_by_hour_by_date (date_id);""",
+            """CREATE INDEX IF NOT EXISTS idx_date_id_abbreviation_frbsbd
+            ON bart.fact_ridership_by_station_by_date (date_id, abbreviation);""",
+            "CREATE INDEX IF NOT EXISTS idx_date_frcbd ON bart.fact_ridership_count_by_date (date_id);",
+            "REFRESH MATERIALIZED VIEW bart.fact_ridership_by_station_by_date",
+            "REFRESH MATERIALIZED VIEW bart.fact_ridership_count_by_date",
+            "REFRESH MATERIALIZED VIEW bart.fact_ridership_count_by_hour_by_date",
+            "REFRESH MATERIALIZED VIEW bart.fact_ridership_by_hour_by_station_by_date",
+        ]
+        for sql_stmt in sql_stmts:
+            log.info(sql_stmt)
+            engine.execute(sql_stmt)
+
     def run(self):
         for year in range(self.start_year, self.end_year + 1):
             log.info(f"Loading {year} bart data into the data warehouse...")
             self.load_to_source_schema(year)
             self.transform_to_bart_schema(year)
+        self.create_materialized_views()
 
     def drop_all():
         drop_sql_stmts = [
