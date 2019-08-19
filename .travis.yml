@@ -22,6 +22,8 @@ deploy:
   application: $CODE_DEPLOY_APP_NAME
   deployment_group: $CODE_DEPLOY_DEPLOYMENT_GROUP
   region: $AWS_REGION
+  on:
+    branch: staging
 script:
   - flake8 .
   - black --check .
