@@ -9,10 +9,10 @@ deploy:
   secret_access_key: $AWS_SECRET_KEY
   local_dir: dpl_cd_upload
   skip_cleanup: true
-  on: &2
-    repo: $REPO_NAME
   bucket: $S3_UPLOAD_BUCKET
   region: $AWS_REGION
+  on:
+    branch: staging
 - provider: codedeploy
   access_key_id: $AWS_ACCESS_KEY
   secret_access_key: $AWS_SECRET_KEY
@@ -22,7 +22,6 @@ deploy:
   application: $CODE_DEPLOY_APP_NAME
   deployment_group: $CODE_DEPLOY_DEPLOYMENT_GROUP
   region: $AWS_REGION
-  on: *2
 script:
   - flake8 .
   - black --check .
