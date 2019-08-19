@@ -1,0 +1,33 @@
+dist: xenial
+language: python
+cache: pip
+before_install:
+- pip install flake8 black
+deploy:
+- provider: s3
+  access_key_id: $AWS_ACCESS_KEY
+  secret_access_key: $AWS_SECRET_KEY
+  local_dir: dpl_cd_upload
+  skip_cleanup: true
+  on: &2
+    repo: $REPO_NAME
+  bucket: $S3_UPLOAD_BUCKET
+  region: $AWS_REGION
+- provider: codedeploy
+  access_key_id: $AWS_ACCESS_KEY
+  secret_access_key: $AWS_SECRET_KEY
+  bucket: $S3_UPLOAD_BUCKET
+  key: latest.zip
+  bundle_type: zip
+  application: $CODE_DEPLOY_APP_NAME
+  deployment_group: $CODE_DEPLOY_DEPLOYMENT_GROUP
+  region: $AWS_REGION
+  on: *2
+script:
+  - flake8 .
+  - black --check .
+  - zip -r latest *
+  - mkdir -p dpl_cd_upload
+  - mv latest.zip dpl_cd_upload/latest.zip
+# after_success:
+#   -

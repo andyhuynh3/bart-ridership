@@ -10,7 +10,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_table
 import pandas as pd
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 from flask import after_this_request, request, send_file
 from plotly import graph_objs as go
 
@@ -40,16 +40,9 @@ app = dash.Dash(
     external_stylesheets=[dbc.themes.BOOTSTRAP, font_awesome_cdn],
     meta_tags=[{"name": "viewport", "content": "width=device-width"}],
 )
-ridership_by_hour_by_date = bart_ridership_data.get_ridership_by_hour_by_date(
-    "2015-06-02"
-)
-ridership_by_date_df = bart_ridership_data.get_ridership_data_by_date()
+app.title = "Bart Ridership Dashboard"
 
 mapbox_data = bart_ridership_data.get_station_lat_lon()
-
-navbar = dbc.NavbarSimple(
-    brand="Bart Ridership Dashboard", brand_href="#", sticky="top"
-)
 
 body = dbc.Row(
     [
@@ -58,7 +51,7 @@ body = dbc.Row(
                 html.Div(
                     className="div-user-controls",
                     children=[
-                        html.H2("Bart Ridership App"),
+                        html.H2("Bart Ridership Dashboard"),
                         html.P(
                             "Select different days using the date picker. "
                             "Click on points on the map to update the histogram. "
@@ -323,17 +316,34 @@ body = dbc.Row(
                             width=11,
                         ),
                         dbc.Col(
-                            html.Div(
-                                html.A(
-                                    dbc.Button(
-                                        "Download",
-                                        outline=True,
-                                        color="primary",
-                                        className="mr-1",
-                                    ),
-                                    id="download-csv",
-                                )
-                            ),
+                            [
+                                dbc.Row(
+                                    html.Div(
+                                        id="run-query",
+                                        children=[
+                                            dbc.Button(
+                                                "Run",
+                                                outline=True,
+                                                color="primary",
+                                                className="mr-1 btn-block center-block",
+                                            )
+                                        ],
+                                    )
+                                ),
+                                dbc.Row(
+                                    html.Div(
+                                        html.A(
+                                            dbc.Button(
+                                                "Download",
+                                                outline=True,
+                                                color="primary",
+                                                className="mr-1 btn-block center-block",
+                                            ),
+                                            id="download-csv",
+                                        )
+                                    )
+                                ),
+                            ],
                             width=1,
                         ),
                     ]
@@ -460,22 +470,24 @@ def get_histogram_figure(date, click_data=None):
                 name="Destination",
             ),
         ]
-        # layout["annotations"] = [
-        #     dict(
-        #         x=xi + 0.25 if i else xi - 0.25,
-        #         y=yi,
-        #         text=str(yi),
-        #         xanchor="center",
-        #         yanchor="bottom",
-        #         showarrow=False,
-        #         font=dict(color="white"),
-        #     )
-        #     for i, df in enumerate([])
-        #     for xi, yi in zip(df["hour"], df["ridership_total"])
-        # ]
         layout["showlegend"] = True
         layout["legend"] = go.layout.Legend(x=0, y=1)
         layout["title"] = go.layout.Title(text=f"Station: {station_abb}", x=0.5, y=0.95)
+        layout["annotations"] = [
+            dict(
+                x=xi + 0.25 if i else xi - 0.25,
+                y=yi,
+                text=str(yi),
+                xanchor="center",
+                yanchor="bottom",
+                showarrow=False,
+                font=dict(color="white"),
+            )
+            for i, col in enumerate(
+                ["origin_ridership_total", "destination_ridership_total"]
+            )
+            for xi, yi in zip(df["hour"], df[col])
+        ]
     else:
         df = bart_ridership_data.get_ridership_by_hour_by_date(date)
         max_y = df["ridership_total"].max()
@@ -513,7 +525,7 @@ def get_histogram_figure(date, click_data=None):
     return figure
 
 
-@app.callback(Output("hover-ts", "children"), [Input("mapbox", "hoverData")])
+@app.callback(Output("hover-ts", "children"), [Input("mapbox", "clickData")])
 def store_hover_ts(click_data):
     return round(1000 * time.time())
 
@@ -548,9 +560,7 @@ def update_hourly_histogram_by_date(date, click_data, n_clicks_timestamp, hover_
             station_name = station_info["name"][0]
             station_display = f"{station_abb} ({station_name})"
             station_full_address_str = f"Station address: {station_full_address}"
-            station_links_str = (
-                f"More information: [Station link]({station_link}) and [Map]({station_map_url})"
-            )
+            station_links_str = f"More information: [Station link]({station_link}) and [Map]({station_map_url})"
         else:
             station_display = "none"
             station_full_address_str = None
@@ -609,12 +619,11 @@ def update_total_rides_selection(date, click_data=None):
 
 @app.callback(
     output=[Output("data-table", "data"), Output("data-table", "columns")],
-    inputs=[Input("field-selection", "value"), Input("date-picker", "date")],
+    inputs=[Input("run-query", "n_clicks"), Input("date-picker", "date")],
+    state=[State("field-selection", "value")],
 )
-def update_data_table(columns, date):
-    global ridership_by_date_df
-    if str(ridership_by_date_df["date"][0]) != date:
-        ridership_by_date_df = bart_ridership_data.get_ridership_data_by_date(date)
+def update_data_table(n_clicks, date, columns):
+    ridership_by_date_df = bart_ridership_data.get_ridership_data_by_date(date)
     selected_cols_df = ridership_by_date_df[columns]
     new_cols = [{"name": i, "id": i} for i in selected_cols_df.columns]
     return selected_cols_df.to_dict("records"), new_cols
