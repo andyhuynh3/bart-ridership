@@ -14,8 +14,8 @@ from dash.dependencies import Input, Output, State
 from flask import after_this_request, request, send_file
 from plotly import graph_objs as go
 
-from data import BartRidershipData
-from settings import MAPBOX_ACCESS_TOKEN, engine, log
+from bart_ridership.db.data import BartRidershipData
+from bart_ridership.settings import MAPBOX_ACCESS_TOKEN, engine, log
 
 bart_ridership_data = BartRidershipData(connection=engine)
 default_columns = [

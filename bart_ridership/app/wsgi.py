@@ -1,4 +1,4 @@
-from app import app
+from bart_ridership.app.app import app
 
 application = app.server
 

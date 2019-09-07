@@ -4,5 +4,5 @@ Bart ridership dashboard built with Dash. Check it out at http://bartridership.x
 
 ## Screenshots
 
-![](/screenshots/app.png)
+![](/images/app.png)
 

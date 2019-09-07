@@ -2,10 +2,9 @@ import argparse
 import gzip
 from io import BytesIO
 
-import boto3
 import requests
 
-from settings import engine, log
+from bart_ridership.settings import engine, log
 
 
 class BartRidershipLoader:
@@ -15,7 +14,6 @@ class BartRidershipLoader:
     def __init__(self, start_year, end_year):
         self.start_year = start_year
         self.end_year = end_year
-        self.s3 = boto3.client("s3")
 
     def get_source_schema_setup_sql(self, year):
         # Extract source data
@@ -264,30 +262,3 @@ if __name__ == "__main__":
 
     loader = BartRidershipLoader(start_year, end_year)
     loader.run()
-
-
-# def lambda_handler(event, context):
-
-#     for record in event['Records']:
-#         bucket_name = record['s3']['bucket']['name']
-#         key = record['s3']['object']['key']
-#         local_path = '/tmp/' + key.split('/')[-1]
-#         # Download file from S3
-#         client.download_file(bucket_name, key, local_path)
-#         print("Downloaded s3 file, {}, to {}".format(key, local_path))
-#         # Transform the file
-#         output_path = '/tmp/output.csv'
-#         transform_json(local_path, output_path)
-#         # Load csv to Postgres
-#         pg_load(connection_string, schema+'.'+table, output_path)
-
-#     return {
-#         'statusCode': 200,
-#         'body': json.dumps('Hello from Lambda!')
-#     }
-
-# import csv
-# with open('station.csv', 'r') as csvfile:
-#     csv_reader = csv.reader(csvfile, delimiter=',')
-#     for row in csv_reader:
-#         print(f'({row[0].upper()!r}, {row[0]!r}, {row[1]!r}),')

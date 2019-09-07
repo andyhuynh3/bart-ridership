@@ -21,8 +21,6 @@ RUN chmod +x /usr/src/app/entrypoint.sh
 
 COPY . /usr/src/app/
 
-WORKDIR /usr/src/app
-
 EXPOSE 8000
 
 ENTRYPOINT [ "./entrypoint.sh" ]

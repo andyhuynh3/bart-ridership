@@ -5,7 +5,7 @@ services:
   nginx:
     container_name: nginx
     restart: always
-    build: ./nginx
+    build: ./bart_ridership/nginx
     ports:
       - "80:80"
     depends_on:
@@ -14,9 +14,7 @@ services:
   web:
     container_name: web
     restart: always
-    build: ./app
-    env_file:
-      - .env
+    build: ./bart_ridership/app
     environment:
       - AWS_DEFAULT_REGION=us-west-2
     volumes:

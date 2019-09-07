@@ -4,7 +4,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from settings import BART_API_TOKEN, engine
+from bart_ridership.settings import engine, BART_API_TOKEN
 
 
 class StationInformationParser:
