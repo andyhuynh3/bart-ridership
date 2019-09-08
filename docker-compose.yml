@@ -14,8 +14,12 @@ services:
   web:
     container_name: web
     restart: always
-    build: ./bart_ridership/app
+    build:
+      context: ./
+      dockerfile: ./bart_ridership/app/Dockerfile
     environment:
       - AWS_DEFAULT_REGION=us-west-2
+    env_file:
+      - .env
     volumes:
       - ~/.aws:/root/.aws:ro
