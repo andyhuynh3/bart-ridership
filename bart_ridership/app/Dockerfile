@@ -21,8 +21,6 @@ RUN chmod +x /usr/src/app/entrypoint.sh
 
 COPY ./bart_ridership /usr/src/app/bart_ridership
 
-RUN ls
-
 EXPOSE 8000
 
 ENTRYPOINT [ "./entrypoint.sh" ]
