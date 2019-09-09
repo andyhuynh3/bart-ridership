@@ -1,0 +1,1 @@
+0 11 * * * cd /usr/src/app && python3 -m bart_ridership.db.loader > /var/log/cron.log 2>&1
