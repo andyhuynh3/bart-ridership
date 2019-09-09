@@ -5,7 +5,9 @@ services:
   nginx:
     container_name: nginx
     restart: always
-    build: ./bart_ridership/nginx
+    build:
+      context: ./
+      dockerfile: ./bart_ridership/nginx/Dockerfile
     ports:
       - "80:80"
     depends_on:

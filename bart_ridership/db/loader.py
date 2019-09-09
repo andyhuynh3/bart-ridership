@@ -1,5 +1,6 @@
 import argparse
 import gzip
+from datetime import datetime
 from io import BytesIO
 
 import requests
@@ -17,7 +18,6 @@ class BartRidershipLoader:
 
     def get_source_schema_setup_sql(self, year):
         # Extract source data
-        # TODO: Get rid of partition and use index
         create_schema_sql = "CREATE SCHEMA IF NOT EXISTS source"
         create_table_sql = """
         CREATE TABLE IF NOT EXISTS source.ridership (
@@ -114,7 +114,7 @@ class BartRidershipLoader:
     def create_materialized_views(self):
         sql_stmts = [
             """
-            CREATE MATERIALIZED VIEW IF NOT EXISTS bart.fact_ridership_by_station_by_date
+            CREATE MATERIALIZED VIEW IF NOT EXISTS bart.fact_ridership_by_station_by_date_tmp
             AS
             SELECT
                     date_id,
@@ -153,7 +153,7 @@ class BartRidershipLoader:
             WITH NO DATA;
             """,
             """
-            CREATE MATERIALIZED VIEW IF NOT EXISTS bart.fact_ridership_count_by_date
+            CREATE MATERIALIZED VIEW IF NOT EXISTS bart.fact_ridership_count_by_date_tmp
             AS
             SELECT
                 date_id,
@@ -163,7 +163,7 @@ class BartRidershipLoader:
             WITH NO DATA;
             """,
             """
-            CREATE MATERIALIZED VIEW IF NOT EXISTS bart.fact_ridership_count_by_hour_by_date
+            CREATE MATERIALIZED VIEW IF NOT EXISTS bart.fact_ridership_count_by_hour_by_date_tmp
             AS
             SELECT
                 date_id,
@@ -174,56 +174,80 @@ class BartRidershipLoader:
             WITH NO DATA;
             """,
             """
-            CREATE MATERIALIZED VIEW IF NOT EXISTS bart.fact_ridership_by_hour_by_station_by_date
+            CREATE MATERIALIZED VIEW IF NOT EXISTS bart.fact_ridership_by_hour_by_origin_station_by_date_tmp
             AS
             SELECT
                 date_id,
+                abbreviation,
+                hour,
+                COUNT(1) AS origin_ridership_total
+            FROM bart.fact_ridership fr
+            JOIN bart.dim_station ds ON 1=1
+                AND fr.origin_station_id = ds.id
+            GROUP BY date_id, abbreviation, hour
+            WITH NO DATA;
+            """,
+            """
+            CREATE MATERIALIZED VIEW IF NOT EXISTS bart.fact_ridership_by_hour_by_dest_station_by_date_tmp
+            AS
+            SELECT
+            date_id,
             abbreviation,
             hour,
-            origin_ridership_total,
-            destination_ridership_total
-            FROM
-            (
-                SELECT
-                    date_id,
-                    abbreviation,
-                    hour,
-                    COUNT(1) AS origin_ridership_total
-                FROM bart.fact_ridership fr
-                JOIN bart.dim_station ds ON 1=1
-                    AND fr.origin_station_id = ds.id
-                GROUP BY date_id, abbreviation, hour
-            ) origin
-            JOIN
-            (
-                SELECT
+            COUNT(1) AS destination_ridership_total
+            FROM bart.fact_ridership fr
+            JOIN bart.dim_station ds ON 1 = 1
+                AND fr.destination_station_id = ds.id
+            GROUP BY date_id, abbreviation, hour
+            WITH NO DATA;
+            """,
+            """
+            CREATE MATERIALIZED VIEW IF NOT EXISTS bart.fact_ridership_by_hour_by_station_by_date_tmp
+            AS
+            SELECT
                 date_id,
                 abbreviation,
                 hour,
-                COUNT(1) AS destination_ridership_total
-                FROM bart.fact_ridership fr
-                        JOIN bart.dim_station ds ON 1 = 1
-                    AND fr.destination_station_id = ds.id
-                GROUP BY date_id, abbreviation, hour
-            ) dest
-            USING (date_id, abbreviation, hour)
+                origin_ridership_total,
+                destination_ridership_total
+            FROM
+            bart.fact_ridership_by_hour_by_origin_station_by_date_tmp
+            JOIN
+            bart.fact_ridership_by_hour_by_dest_station_by_date_tmp
+            USING(date_id, abbreviation, hour)
             WITH NO DATA;
             """,
             """CREATE INDEX IF NOT EXISTS idx_date_id_abbreviation_frbhbsbd
-            ON bart.fact_ridership_by_hour_by_station_by_date (date_id, abbreviation);""",
+            ON bart.fact_ridership_by_hour_by_station_by_date_tmp (date_id, abbreviation);""",
             """CREATE INDEX IF NOT EXISTS idx_date_id_frcbhbd
-            ON bart.fact_ridership_count_by_hour_by_date (date_id);""",
+            ON bart.fact_ridership_count_by_hour_by_date_tmp (date_id);""",
             """CREATE INDEX IF NOT EXISTS idx_date_id_abbreviation_frbsbd
-            ON bart.fact_ridership_by_station_by_date (date_id, abbreviation);""",
-            "CREATE INDEX IF NOT EXISTS idx_date_frcbd ON bart.fact_ridership_count_by_date (date_id);",
-            "REFRESH MATERIALIZED VIEW bart.fact_ridership_by_station_by_date",
-            "REFRESH MATERIALIZED VIEW bart.fact_ridership_count_by_date",
-            "REFRESH MATERIALIZED VIEW bart.fact_ridership_count_by_hour_by_date",
-            "REFRESH MATERIALIZED VIEW bart.fact_ridership_by_hour_by_station_by_date",
+            ON bart.fact_ridership_by_station_by_date_tmp (date_id, abbreviation);""",
+            "CREATE INDEX IF NOT EXISTS idx_date_frcbd_tmp ON bart.fact_ridership_count_by_date (date_id);",
+            # Do swap-drop
+            "REFRESH MATERIALIZED VIEW bart.fact_ridership_by_station_by_date_tmp",
+            "DROP MATERIALIZED VIEW IF EXISTS bart.fact_ridership_by_station_by_date",
+            """ALTER MATERIALIZED VIEW bart.fact_ridership_by_station_by_date_tmp
+            RENAME TO fact_ridership_by_station_by_date""",
+            "REFRESH MATERIALIZED VIEW bart.fact_ridership_count_by_date_tmp",
+            "DROP MATERIALIZED VIEW IF EXISTS bart.fact_ridership_count_by_date",
+            """ALTER MATERIALIZED VIEW bart.fact_ridership_count_by_date_tmp
+            RENAME TO fact_ridership_count_by_date""",
+            "REFRESH MATERIALIZED VIEW bart.fact_ridership_count_by_hour_by_date_tmp",
+            "DROP MATERIALIZED VIEW IF EXISTS bart.fact_ridership_count_by_hour_by_date",
+            """ALTER MATERIALIZED VIEW bart.fact_ridership_count_by_hour_by_date_tmp
+            RENAME TO fact_ridership_count_by_hour_by_date""",
+            "REFRESH MATERIALIZED VIEW bart.fact_ridership_by_hour_by_origin_station_by_date_tmp",
+            "REFRESH MATERIALIZED VIEW bart.fact_ridership_by_hour_by_dest_station_by_date_tmp",
+            "REFRESH MATERIALIZED VIEW bart.fact_ridership_by_hour_by_station_by_date_tmp",
+            "DROP MATERIALIZED VIEW IF EXISTS bart.fact_ridership_by_hour_by_station_by_date",
+            """ALTER MATERIALIZED VIEW bart.fact_ridership_by_hour_by_station_by_date_tmp
+            RENAME TO fact_ridership_by_hour_by_station_by_date""",
         ]
         for sql_stmt in sql_stmts:
-            log.info(sql_stmt)
+            log.info(f"Running {sql_stmt}")
             engine.execute(sql_stmt)
+        log.info("Refreshed all materialized views.")
 
     def run(self):
         for year in range(self.start_year, self.end_year + 1):
@@ -248,14 +272,17 @@ if __name__ == "__main__":
         "-s",
         "--start_year",
         help="Year to start loading bart data into data warehouse, inclusive",
-        required=True,
+        default=datetime.today().year,
+        required=False,
     )
     parser.add_argument(
         "-e",
         "--end_year",
         help="Year to stop loading bart data into data warehouse, inclusive",
-        required=True,
+        default=datetime.today().year,
+        required=False,
     )
+
     args = parser.parse_args()
     start_year = int(args.start_year)
     end_year = int(args.end_year)
