@@ -63,7 +63,7 @@ body = dbc.Row(
                                 dcc.DatePickerSingle(
                                     id="date-picker",
                                     min_date_allowed=dt(2011, 1, 1),
-                                    max_date_allowed=dt(2018, 12, 31),
+                                    max_date_allowed=dt.today(),
                                     initial_visible_month=dt(2011, 1, 1),
                                     date=dt(2011, 1, 1).date(),
                                     display_format="MMMM D, YYYY",
